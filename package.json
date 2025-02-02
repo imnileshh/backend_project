@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "this is clone of youtube",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "dev": "nodemon src/index.js"
   },
   "keywords": [
     "node",
     "javascript"
   ],
   "author": "Nilesh Yadav",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
 }
