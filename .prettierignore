@@ -1,0 +1,27 @@
+# Ignore node_modules and build artifacts
+node_modules
+dist
+build
+coverage
+
+# Ignore logs and environment files
+*.log
+*.env
+.env.*
+.env
+
+
+# Ignore package lock and dependency files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Ignore public files (optional)
+public
+
+# Ignore database files (if using SQLite)
+*.sqlite
+*.db
+
+# Ignore generated files
+.DS_Store
