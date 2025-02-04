@@ -27,4 +27,13 @@ app.use(express.static("public"))
 // Handle Cookies
 app.use(cookieParser())
 
+
+
+// import Routes 
+
+import router from './routes/user.routes.js';
+
+app.use("/api/v1/users", router);
+// http://localhost:8000/api/user
+
 export { app }
