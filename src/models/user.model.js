@@ -33,8 +33,8 @@ const userSchema = new Schema(
             type: String,  // claudinary URL
         },
         password: {
-            Type: String,
-            required: [true, "Password is Required"]
+            type: String,
+            required: true
         },
         watchHistory: [
             {
@@ -103,4 +103,4 @@ userSchema.methods.generateRefreshToken = function () {
 
 
 
-export default User = mongoose.model("User", userSchema)
+export const User = mongoose.model("User", userSchema)
