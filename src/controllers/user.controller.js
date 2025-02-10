@@ -5,6 +5,7 @@ import ApiError from "../utils/apiErrors.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import ApiResponse from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import { v2 as cloudinary } from "cloudinary"
 
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
@@ -24,7 +25,7 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating AccessToken and RefreshToken")
     }
-}
+};
 
 const registerUser = asyncHandler(async (req, res) => {
     // get user details from frontend
@@ -102,7 +103,7 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(200, createdUser, "user registered successfully")
     )
-})
+});
 
 const loginUser = asyncHandler(async (req, res) => {
     // get data => req.body
@@ -159,7 +160,7 @@ const loginUser = asyncHandler(async (req, res) => {
                 "User Logged In Successfully"
             )
         )
-})
+});
 
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -187,7 +188,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(200, {}, "User LoggedOut Successfully")
         )
-})
+});
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
 
@@ -236,8 +237,164 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
                 "Access Token Refreshed"
             )
         )
+});
+
+const changeUserPassword = asyncHandler(async (req, res) => {
+
+    const { oldPassword, newPassword, confNewPassword } = req.body;
+
+    if (!(newPassword === confNewPassword)) {
+        throw new ApiError(400, "NewPassword and ConfirmNewPassword are different")
+    }
+
+    const user = await User.findById(req.user._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Enter old password correctly")
+    }
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "Password Changed Succesfully")
+        )
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, req.user, "User fetched successfully")
+        )
+})
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+
+    const { email, fullName } = req.body;
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName: fullName,
+                email: email
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password");
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Details updated Successfully")
+        )
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+
+    const avatarLocalPath = req.file?.path;
+
+    if (!avatarLocalPath) {
+        throw new apiError(400, "Avatar file is missing")
+    }
+
+    const user = await User.findById(req.user?._id).select("-password -refreshToken")
+    if (!user) {
+        throw new ApiError(400, "User Not found")
+    }
+
+    // const oldAvatarUrl = user.avatar;
+    // const avatarPublicId = oldAvatarUrl?.split("/").pop().split(".")[0];
+    const oldAvatarUrl = user.avatar;
+    let avatarPublicId = null;
+
+    if (oldAvatarUrl) {
+        const parts = oldAvatarUrl.split("/");
+        const filename = parts.pop();
+        avatarPublicId = filename?.split(".")[0]; // Extract Cloudinary public ID
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar?.url) {
+        throw new apiError(400, "Error while uploading Avatar")
+    }
+
+    if (avatarPublicId) {
+        const oldAvatarDeleted = await cloudinary.uploader.destroy(avatarPublicId);
+        if (!["ok", "not found"].includes(oldAvatarDeleted.result)) {
+            throw new ApiError(500, "Failed to delete old avatar");
+        }
+    }
+
+    user.avatar = avatar.url;
+    await user.save({ validateBeforeSave: false })
+
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Avatar Changed Successfully")
+        )
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+        throw new apiError(400, "Cover image file is missing")
+    }
+
+    const user = await User.findById(req.user?._id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(400, "usernot found")
+    }
+
+    const oldCoverImageUrl = user.coverImage;
+    let coverImagePublicId = null;
+    if (oldCoverImageUrl) {
+        const parts = oldCoverImageUrl.split("/");
+        const filename = parts.pop();
+        coverImagePublicId = filename?.split(".")[0];
+    };
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    if (!coverImage?.url) {
+        throw new apiError(500, "Failed to upload coverImage")
+    }
+
+    if (coverImagePublicId) {
+        const oldCoverImageDeleted = await cloudinary.uploader.destroy(coverImagePublicId);
+        if (!["ok", "not found"].includes(oldCoverImageDeleted.result)) {
+            throw new ApiError(500, "Failed to delete old cover image");
+        }
+    }
+
+    user.coverImage = coverImage.url
+    await user.save({ validateBeforeSave: false })
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "CoverImage changed successfully")
+        );
 })
 
 
-
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeUserPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage,
+};
